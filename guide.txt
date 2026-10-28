@@ -1,0 +1,899 @@
+================================================================================
+  MINI TASK MANAGER — COMPREHENSIVE PROJECT SPECIFICATION
+  Flutter + Laravel REST API · Implementation-Ready Reference
+================================================================================
+  Original assessment scope is preserved exactly. Nothing extra has been added.
+================================================================================
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 0 — VERIFIED ENVIRONMENT SNAPSHOT (detected 2026-10-28)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Runtime         Version               Notes
+  --------------- --------------------- ----------------------------------------
+  PHP             8.2.12 (ZTS/x64)      Via XAMPP · all required extensions loaded
+  Composer        2.10.3                Global
+  Laravel         12.x (installer 5.32) laravel new uses ^12.0 with PHP >=8.2
+  MariaDB         10.4.32               XAMPP bundled (MySQL-compatible)
+  Flutter         3.29.2 (stable)       Channel stable
+  Dart            3.7.2 (stable)        Bundled with Flutter 3.29.2
+  Node.js         22.16.0               Available (used only for asset tooling)
+  npm             10.9.2                Bundled with Node 22
+  Git             2.45.2                Windows build
+
+  PHP Extensions confirmed: pdo_mysql, mbstring, openssl, tokenizer, xml,
+                             ctype, json, bcmath, curl, mysqli
+
+  Flutter targets available: Android (SDK 36, licenses pending), Chrome, Windows
+  Recommended dev target: Chrome (flutter run -d chrome) — no license setup needed
+
+  XAMPP MySQL credentials (default, change if customised):
+    Host     : 127.0.0.1
+    Port     : 3306
+    Username : root
+    Password : (empty string)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 1 — PROJECT OVERVIEW & ASSESSMENT SCOPE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Build a Task Manager MVP consisting of:
+  • Part A — Laravel 12 REST API backend        (target: 2 hours)
+  • Part B — Flutter 3.29 mobile/web frontend   (target: 2 hours)
+
+The Flutter app must talk exclusively to the candidate's own Laravel API.
+Authentication, payments, file uploads, push notifications, and deployment
+are explicitly OUT OF SCOPE.
+
+Evaluation Rubric (100 points):
+  Area                       Points   What is evaluated
+  -------------------------- -------  ------------------------------------------
+  Laravel API & database        30    Migration, Eloquent, full CRUD, persistence
+  Validation & responses        10    Rules, HTTP status codes, consistent JSON
+  Flutter API integration       20    HTTP calls, JSON parsing, error handling
+  End-to-end functionality      20    Create / list / edit / complete / delete
+  Code organisation             10    Readability, separation of concerns
+  UX & testing                  10    Loading / empty / error states, manual test
+
+  Optional bonus (unscored but noted):
+    • Filter tasks by status (pending / completed)
+    • Search tasks by title
+    • Laravel feature test (PHPUnit)
+    • Reusable Flutter form widget
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 2 — DIRECTORY LAYOUT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  c:\xampp\htdocs\axolotls_assignment\
+  ├── guide.txt                  ← this file
+  ├── task_manager_api\          ← Laravel 12 project (Part A)
+  │   ├── app\
+  │   │   ├── Http\
+  │   │   │   ├── Controllers\Api\TaskController.php
+  │   │   │   └── Requests\
+  │   │   │       ├── StoreTaskRequest.php
+  │   │   │       └── UpdateTaskRequest.php
+  │   │   └── Models\Task.php
+  │   ├── database\
+  │   │   └── migrations\
+  │   │       └── xxxx_xx_xx_create_tasks_table.php
+  │   ├── routes\api.php
+  │   ├── .env                   ← DB credentials go here
+  │   └── ...
+  └── task_manager_app\          ← Flutter 3.29 project (Part B)
+      ├── lib\
+      │   ├── main.dart
+      │   ├── models\task.dart
+      │   ├── services\api_service.dart
+      │   ├── screens\
+      │   │   ├── task_list_screen.dart
+      │   │   ├── task_form_screen.dart
+      │   │   └── task_detail_screen.dart   (optional; detail can open form)
+      │   └── widgets\
+      │       ├── task_card.dart
+      │       └── task_form_fields.dart     (bonus: reusable form widget)
+      ├── pubspec.yaml
+      └── ...
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 3 — PART A: LARAVEL BACKEND
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3.1  SCAFFOLD & SETUP COMMANDS
+───────────────────────────────
+Run from c:\xampp\htdocs\axolotls_assignment\
+
+  # Create project (use --no-interaction to skip interactive prompts)
+  laravel new task_manager_api --no-interaction
+
+  cd task_manager_api
+
+  # Verify Laravel version
+  php artisan --version
+  # Expected: Laravel Framework 12.x.x
+
+  # No additional packages are required for the core assessment.
+  # (Sanctum, Passport, etc. are excluded — no auth needed.)
+
+3.2  DATABASE CONFIGURATION (.env)
+────────────────────────────────────
+Edit task_manager_api\.env — set ONLY these DB lines (leave all others as-is):
+
+  DB_CONNECTION=mysql
+  DB_HOST=127.0.0.1
+  DB_PORT=3306
+  DB_DATABASE=task_manager
+  DB_USERNAME=root
+  DB_PASSWORD=
+
+  NOTE: MariaDB 10.4 is fully MySQL-compatible. Laravel's mysql driver works
+  with no extra configuration.
+  NOTE: Create the database first — Laravel does NOT create the database itself.
+
+  Create the database via XAMPP phpMyAdmin OR run:
+    C:\xampp\mysql\bin\mysql.exe -u root -e "CREATE DATABASE IF NOT EXISTS task_manager CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+
+3.3  MIGRATION — tasks TABLE
+──────────────────────────────
+File: database/migrations/xxxx_xx_xx_create_tasks_table.php
+Generated with: php artisan make:migration create_tasks_table
+
+  Schema::create('tasks', function (Blueprint $table) {
+      $table->id();                               // BIGINT UNSIGNED AUTO_INCREMENT PK
+      $table->string('title', 255);               // required, max 255
+      $table->text('description')->nullable();    // optional free text
+      $table->enum('status', ['pending', 'completed'])->default('pending');
+      $table->date('due_date')->nullable();       // optional, format: YYYY-MM-DD
+      $table->timestamps();                       // created_at, updated_at
+  });
+
+  Run migration:
+    php artisan migrate
+
+  Verify:
+    php artisan migrate:status
+
+3.4  TASK MODEL
+────────────────
+File: app/Models/Task.php
+Generated with: php artisan make:model Task
+
+  class Task extends Model
+  {
+      use HasFactory;
+
+      protected $fillable = [
+          'title',
+          'description',
+          'status',
+          'due_date',
+      ];
+
+      // Cast due_date so it serialises as a plain date string, not datetime
+      protected $casts = [
+          'due_date' => 'date:Y-m-d',
+      ];
+  }
+
+  IMPORTANT: Do NOT put 'id', 'created_at', or 'updated_at' in $fillable.
+  Do NOT use $guarded = []; — explicit $fillable is required by the rubric.
+
+3.5  FORM REQUEST CLASSES
+──────────────────────────
+Generate:
+  php artisan make:request StoreTaskRequest
+  php artisan make:request UpdateTaskRequest
+
+StoreTaskRequest.php
+  public function authorize(): bool { return true; }
+
+  public function rules(): array
+  {
+      return [
+          'title'       => ['required', 'string', 'max:255'],
+          'description' => ['nullable', 'string'],
+          'status'      => ['nullable', 'in:pending,completed'],
+          'due_date'    => ['nullable', 'date_format:Y-m-d', 'after_or_equal:today'],
+      ];
+  }
+
+UpdateTaskRequest.php
+  public function authorize(): bool { return true; }
+
+  public function rules(): array
+  {
+      return [
+          'title'       => ['sometimes', 'required', 'string', 'max:255'],
+          'description' => ['nullable', 'string'],
+          'status'      => ['nullable', 'in:pending,completed'],
+          'due_date'    => ['nullable', 'date_format:Y-m-d'],
+      ];
+  }
+
+  NOTE: 'sometimes' on 'title' in UpdateTaskRequest means the rule only fires
+  if the key is present in the request — allows PATCH partial updates.
+
+  NOTE on validation failure (422): Laravel's FormRequest automatically returns
+  HTTP 422 Unprocessable Content with a JSON body when validation fails:
+  {
+    "message": "The title field is required.",
+    "errors": { "title": ["The title field is required."] }
+  }
+  No manual try/catch is needed for validation errors.
+
+3.6  CONTROLLER
+────────────────
+Generate:
+  php artisan make:controller Api/TaskController --api
+
+File: app/Http/Controllers/Api/TaskController.php
+
+  <?php
+  namespace App\Http\Controllers\Api;
+
+  use App\Http\Controllers\Controller;
+  use App\Http\Requests\StoreTaskRequest;
+  use App\Http\Requests\UpdateTaskRequest;
+  use App\Models\Task;
+  use Illuminate\Http\JsonResponse;
+
+  class TaskController extends Controller
+  {
+      // GET /api/tasks
+      public function index(): JsonResponse
+      {
+          $tasks = Task::latest()->get();
+          return response()->json($tasks, 200);
+      }
+
+      // GET /api/tasks/{task}
+      public function show(Task $task): JsonResponse
+      {
+          return response()->json($task, 200);
+      }
+
+      // POST /api/tasks
+      public function store(StoreTaskRequest $request): JsonResponse
+      {
+          $task = Task::create($request->validated());
+          return response()->json($task, 201);
+      }
+
+      // PUT/PATCH /api/tasks/{task}
+      public function update(UpdateTaskRequest $request, Task $task): JsonResponse
+      {
+          $task->update($request->validated());
+          return response()->json($task->fresh(), 200);
+      }
+
+      // DELETE /api/tasks/{task}
+      public function destroy(Task $task): JsonResponse
+      {
+          $task->delete();
+          return response()->json(['message' => 'Task deleted successfully.'], 200);
+      }
+  }
+
+  NOTES:
+  • Route model binding ({task}) automatically resolves the Task by id and
+    returns 404 JSON if not found — no manual Task::findOrFail needed.
+  • $task->fresh() after update() ensures the returned JSON reflects the
+    actual saved state (including any casts / mutators applied at DB level).
+  • DELETE returns 200 with a message body (not 204 No Content) so Flutter
+    can easily check the response without special empty-body handling.
+
+3.7  API ROUTES
+────────────────
+File: routes/api.php
+
+  <?php
+  use App\Http\Controllers\Api\TaskController;
+  use Illuminate\Support\Facades\Route;
+
+  Route::apiResource('tasks', TaskController::class);
+
+  This single line registers all five routes shown in the rubric:
+    GET    /api/tasks          → index
+    GET    /api/tasks/{task}   → show
+    POST   /api/tasks          → store
+    PUT    /api/tasks/{task}   → update  (also handles PATCH)
+    DELETE /api/tasks/{task}   → destroy
+
+  Verify routes:
+    php artisan route:list --path=api
+
+  IMPORTANT — Laravel 11/12 API route loading:
+  In Laravel 11+, routes/api.php is NOT loaded by default unless the API
+  scaffold is installed. Run this once after project creation:
+    php artisan install:api
+  This registers the api route group and creates routes/api.php.
+  Do NOT install Sanctum token tables — answer "no" when prompted, or run:
+    php artisan install:api --without-migration
+
+3.8  CORS CONFIGURATION
+────────────────────────
+Flutter web (Chrome) and Android emulator requests come from a different
+origin. Configure CORS in config/cors.php:
+
+  'paths'           => ['api/*'],
+  'allowed_origins' => ['*'],          // restrict to specific IPs in production
+  'allowed_methods' => ['*'],
+  'allowed_headers' => ['*'],
+
+  Laravel includes the fruitcake/laravel-cors package by default; this file
+  exists out of the box. Only the 'paths' and 'allowed_origins' lines
+  typically need changing from defaults.
+
+3.9  RUNNING THE LARAVEL SERVER
+────────────────────────────────
+  cd c:\xampp\htdocs\axolotls_assignment\task_manager_api
+  php artisan serve --host=0.0.0.0 --port=8000
+
+  • --host=0.0.0.0 makes it reachable from Android emulator (10.0.2.2:8000)
+    and from other devices on the LAN.
+  • Leave this terminal open while testing.
+
+  Verify the server is running:
+    curl http://127.0.0.1:8000/api/tasks
+    # Expected: [] (empty array on fresh DB)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 4 — API CONTRACT (exact JSON shapes)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+All responses use Content-Type: application/json.
+
+4.1  TASK OBJECT (success payload)
+────────────────────────────────────
+  {
+    "id":          1,
+    "title":       "Buy groceries",
+    "description": "Milk, eggs, bread",
+    "status":      "pending",
+    "due_date":    "2026-11-01",
+    "created_at":  "2026-10-28T06:44:00.000000Z",
+    "updated_at":  "2026-10-28T06:44:00.000000Z"
+  }
+
+  • "description" and "due_date" are null when not provided.
+  • "status" is always "pending" or "completed".
+  • Dates: due_date is "YYYY-MM-DD"; timestamps are ISO 8601 UTC.
+
+4.2  ENDPOINT REFERENCE
+────────────────────────
+
+  ┌──────────────┬───────────────────┬──────────────────────────────────────────┐
+  │ Method       │ URL               │ Details                                  │
+  ├──────────────┼───────────────────┼──────────────────────────────────────────┤
+  │ GET          │ /api/tasks        │ Returns array of all task objects.       │
+  │              │                   │ Success: 200 + [ {...}, {...} ]           │
+  │              │                   │ Empty DB: 200 + []                       │
+  ├──────────────┼───────────────────┼──────────────────────────────────────────┤
+  │ GET          │ /api/tasks/{id}   │ Returns single task object.              │
+  │              │                   │ Success: 200 + { task object }           │
+  │              │                   │ Not found: 404 + {"message":"..."}       │
+  ├──────────────┼───────────────────┼──────────────────────────────────────────┤
+  │ POST         │ /api/tasks        │ Body: JSON with title (required),        │
+  │              │                   │   description?, status?, due_date?       │
+  │              │                   │ Success: 201 + { new task object }       │
+  │              │                   │ Validation fail: 422 + {errors:{...}}    │
+  ├──────────────┼───────────────────┼──────────────────────────────────────────┤
+  │ PUT / PATCH  │ /api/tasks/{id}   │ Body: JSON with any subset of fields.    │
+  │              │                   │ Success: 200 + { updated task object }   │
+  │              │                   │ Not found: 404 · Validation: 422         │
+  ├──────────────┼───────────────────┼──────────────────────────────────────────┤
+  │ DELETE       │ /api/tasks/{id}   │ No request body.                         │
+  │              │                   │ Success: 200 + {"message":"Task deleted  │
+  │              │                   │   successfully."}                        │
+  │              │                   │ Not found: 404 + {"message":"..."}       │
+  └──────────────┴───────────────────┴──────────────────────────────────────────┘
+
+4.3  REQUEST HEADERS (Flutter must send)
+──────────────────────────────────────────
+  Content-Type: application/json
+  Accept: application/json
+
+  The Accept: application/json header is critical — without it, Laravel
+  returns HTML error pages instead of JSON for 404/422/500 errors.
+
+4.4  ERROR RESPONSE SHAPES
+───────────────────────────
+  404 Not Found:
+    { "message": "No query results for model [App\\Models\\Task] 5" }
+
+  422 Validation Error:
+    {
+      "message": "The title field is required.",
+      "errors": {
+        "title": ["The title field is required."],
+        "due_date": ["The due date field must be a valid date."]
+      }
+    }
+
+  500 Server Error (unexpected):
+    { "message": "Server Error" }
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 5 — PART B: FLUTTER FRONTEND
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5.1  SCAFFOLD & SETUP COMMANDS
+───────────────────────────────
+Run from c:\xampp\htdocs\axolotls_assignment\
+
+  flutter create task_manager_app --org com.axolotls --platforms android,web,windows
+  cd task_manager_app
+  flutter pub get
+
+5.2  DEPENDENCY VERSIONS (pubspec.yaml)
+────────────────────────────────────────
+  environment:
+    sdk: ">=3.7.2 <4.0.0"
+
+  dependencies:
+    flutter:
+      sdk: flutter
+    http: ^1.2.2          # HTTP client; compatible with Dart 3.7 / Flutter 3.29
+    intl: ^0.20.2         # Date formatting (DateFormat)
+
+  dev_dependencies:
+    flutter_test:
+      sdk: flutter
+    flutter_lints: ^5.0.0
+
+  NOTE: Do NOT use Dio for this assessment unless GetX is used for state
+  management (the rubric says "use http or Dio"). The http package requires
+  zero additional configuration and avoids certificate/interceptor pitfalls.
+
+  NOTE: GetX is mentioned as optional ("if required for the role"). For a
+  straightforward MVP, use setState + a simple service class. This avoids
+  the GetX version conflicts that commonly occur with Flutter 3.29.
+
+5.3  BASE URL CONFIGURATION
+────────────────────────────
+Create lib/config/api_config.dart:
+
+  class ApiConfig {
+    // ── Choose the correct URL for your run target ──────────────────────────
+    //
+    // Flutter web (Chrome) + Laravel on same machine:
+    static const String baseUrl = 'http://127.0.0.1:8000/api';
+    //
+    // Android emulator + Laravel on same machine:
+    //   static const String baseUrl = 'http://10.0.2.2:8000/api';
+    //
+    // Physical Android device (USB debug) + Laravel on same machine:
+    //   Replace 192.168.x.x with your PC's LAN IP shown by `ipconfig`
+    //   static const String baseUrl = 'http://192.168.x.x:8000/api';
+    //
+    // Windows desktop + Laravel on same machine:
+    //   static const String baseUrl = 'http://127.0.0.1:8000/api';
+    // ─────────────────────────────────────────────────────────────────────────
+
+    static const Duration timeout = Duration(seconds: 15);
+  }
+
+  IMPORTANT: Android emulator uses 10.0.2.2 (not 127.0.0.1) to reach the
+  host machine. Chrome and Windows desktop use 127.0.0.1.
+
+5.4  TASK MODEL (lib/models/task.dart)
+───────────────────────────────────────
+  class Task {
+    final int id;
+    final String title;
+    final String? description;
+    final String status;        // "pending" | "completed"
+    final String? dueDate;      // "YYYY-MM-DD" or null
+    final String createdAt;
+    final String updatedAt;
+
+    const Task({
+      required this.id,
+      required this.title,
+      this.description,
+      required this.status,
+      this.dueDate,
+      required this.createdAt,
+      required this.updatedAt,
+    });
+
+    bool get isCompleted => status == 'completed';
+
+    factory Task.fromJson(Map<String, dynamic> json) {
+      return Task(
+        id:          json['id'] as int,
+        title:       json['title'] as String,
+        description: json['description'] as String?,
+        status:      json['status'] as String,
+        dueDate:     json['due_date'] as String?,
+        createdAt:   json['created_at'] as String,
+        updatedAt:   json['updated_at'] as String,
+      );
+    }
+
+    Map<String, dynamic> toJson() {
+      return {
+        'title':       title,
+        'description': description,
+        'status':      status,
+        if (dueDate != null) 'due_date': dueDate,
+      };
+    }
+  }
+
+  CRITICAL: The JSON key from Laravel is "due_date" (snake_case), not
+  "dueDate". Always map it explicitly as shown above.
+
+5.5  API SERVICE (lib/services/api_service.dart)
+─────────────────────────────────────────────────
+  import 'dart:convert';
+  import 'package:http/http.dart' as http;
+  import '../config/api_config.dart';
+  import '../models/task.dart';
+
+  class ApiException implements Exception {
+    final int statusCode;
+    final String message;
+    const ApiException(this.statusCode, this.message);
+    @override
+    String toString() => 'ApiException($statusCode): $message';
+  }
+
+  class ApiService {
+    static final _headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',         // REQUIRED — forces JSON errors
+    };
+
+    static Uri _uri(String path) =>
+        Uri.parse('${ApiConfig.baseUrl}$path');
+
+    static Future<http.Response> _safeRequest(
+      Future<http.Response> Function() request,
+    ) async {
+      try {
+        final response = await request().timeout(ApiConfig.timeout);
+        return response;
+      } on Exception catch (e) {
+        throw ApiException(0, 'Network error: $e');
+      }
+    }
+
+    static void _assertSuccess(http.Response res, List<int> expected) {
+      if (!expected.contains(res.statusCode)) {
+        final body = jsonDecode(res.body) as Map<String, dynamic>;
+        throw ApiException(res.statusCode, body['message'] ?? 'Unknown error');
+      }
+    }
+
+    // GET /api/tasks
+    static Future<List<Task>> getTasks() async {
+      final res = await _safeRequest(
+        () => http.get(_uri('/tasks'), headers: _headers),
+      );
+      _assertSuccess(res, [200]);
+      final List<dynamic> data = jsonDecode(res.body);
+      return data.map((j) => Task.fromJson(j)).toList();
+    }
+
+    // GET /api/tasks/{id}
+    static Future<Task> getTask(int id) async {
+      final res = await _safeRequest(
+        () => http.get(_uri('/tasks/$id'), headers: _headers),
+      );
+      _assertSuccess(res, [200]);
+      return Task.fromJson(jsonDecode(res.body));
+    }
+
+    // POST /api/tasks
+    static Future<Task> createTask(Map<String, dynamic> data) async {
+      final res = await _safeRequest(
+        () => http.post(_uri('/tasks'), headers: _headers, body: jsonEncode(data)),
+      );
+      _assertSuccess(res, [201]);
+      return Task.fromJson(jsonDecode(res.body));
+    }
+
+    // PATCH /api/tasks/{id}
+    static Future<Task> updateTask(int id, Map<String, dynamic> data) async {
+      final res = await _safeRequest(
+        () => http.patch(_uri('/tasks/$id'), headers: _headers, body: jsonEncode(data)),
+      );
+      _assertSuccess(res, [200]);
+      return Task.fromJson(jsonDecode(res.body));
+    }
+
+    // DELETE /api/tasks/{id}
+    static Future<void> deleteTask(int id) async {
+      final res = await _safeRequest(
+        () => http.delete(_uri('/tasks/$id'), headers: _headers),
+      );
+      _assertSuccess(res, [200]);
+    }
+  }
+
+5.6  SCREEN STRUCTURE
+──────────────────────
+Three screens are sufficient for the MVP:
+
+  (1) TaskListScreen   — default home route
+      State: _isLoading (bool), _tasks (List<Task>), _errorMessage (String?)
+      On init: call ApiService.getTasks() → populate _tasks
+      Displays:
+        • Loading state: CircularProgressIndicator centred
+        • Error state: error message + retry button
+        • Empty state: "No tasks yet. Tap + to create one."
+        • Task list: ListView.builder of TaskCard widgets
+      FAB: navigates to TaskFormScreen(task: null)
+      On each TaskCard: tap → TaskFormScreen(task: task) for edit
+      On each TaskCard: checkbox/toggle → ApiService.updateTask(id, {status})
+      On each TaskCard: delete icon → confirm dialog → ApiService.deleteTask(id)
+      After any mutation: call _loadTasks() to refresh the list
+
+  (2) TaskFormScreen(Task? task)
+      Mode: task == null → Create · task != null → Edit
+      Fields:
+        • Title TextFormField (required, max 255, trimmed before submit)
+        • Description TextFormField (optional, multiline)
+        • Due Date: read-only TextFormField + IconButton → showDatePicker()
+        • Status DropdownButtonFormField (pending / completed) — shown on Edit only
+      Validation: done by Flutter Form + GlobalKey<FormState>
+        • Title empty → "Title is required"
+        • No API call until local validation passes
+      On submit:
+        • Create: ApiService.createTask(data) → pop with result: true
+        • Edit:   ApiService.updateTask(task.id, data) → pop with result: true
+      On error from API (ApiException): show SnackBar with message
+      Caller (TaskListScreen) checks pop result → if true: reload list
+
+  (3) No separate TaskDetailScreen is required; clicking a task opens
+      TaskFormScreen in edit mode. This satisfies the rubric.
+
+5.7  TASK CARD WIDGET (lib/widgets/task_card.dart)
+────────────────────────────────────────────────────
+  Displays:
+    • Title (bold, strikethrough if completed)
+    • Status chip ("Pending" grey / "Completed" green)
+    • Due date when not null (formatted: "Due: Nov 1, 2026")
+    • Description preview (optional, first 80 chars)
+  Actions (via trailing icons or swipe):
+    • Toggle complete: Checkbox or IconButton
+    • Delete: IconButton with confirmation AlertDialog
+
+5.8  DATE FORMATTING
+─────────────────────
+  Use the intl package:
+    import 'package:intl/intl.dart';
+    final formatted = DateFormat('MMM d, y').format(DateTime.parse(task.dueDate!));
+
+  showDatePicker returns a DateTime; convert to string for the API:
+    final isoDate = picked.toIso8601String().substring(0, 10); // "YYYY-MM-DD"
+
+5.9  ANDROID NETWORK PERMISSION
+────────────────────────────────
+For Android targets, add to android/app/src/main/AndroidManifest.xml
+inside <manifest>:
+  <uses-permission android:name="android.permission.INTERNET"/>
+
+Also add this attribute to the <application> tag for HTTP (non-HTTPS) in
+development (only; remove for production):
+  android:usesCleartextTraffic="true"
+
+5.10  RUNNING THE FLUTTER APP
+───────────────────────────────
+  cd c:\xampp\htdocs\axolotls_assignment\task_manager_app
+
+  # List available devices
+  flutter devices
+
+  # Run on Chrome (simplest — no license or emulator setup needed)
+  flutter run -d chrome
+
+  # Run on Windows desktop
+  flutter run -d windows
+
+  # Run on Android emulator (ensure emulator is running, API base = 10.0.2.2)
+  flutter run -d emulator-<id>
+
+  # Build Android APK (for physical device testing)
+  flutter build apk --debug
+  # APK location: build/app/outputs/flutter-apk/app-debug.apk
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 6 — VALIDATION & ERROR HANDLING MATRIX
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Scenario                     Laravel behaviour        Flutter handling
+  ─────────────────────────────────────────────────────────────────────────────
+  Missing title (POST)         422 + errors.title       Local form validation
+                                                         catches first; API
+                                                         422 shown as SnackBar
+  Title > 255 chars            422 + errors.title       Local maxLength=255 on
+                                                         TextField + API 422
+  Invalid due_date format      422 + errors.due_date    DatePicker prevents bad
+                                                         dates; API 422 fallback
+  Invalid status value         422 + errors.status      Dropdown only allows
+                                                         valid values
+  Task not found (GET/PUT/DEL) 404 + message            ApiException(404, msg)
+                                                         shown as SnackBar
+  Network offline              TimeoutException         ApiException(0, msg)
+                                                         shown as SnackBar
+  Server error                 500 + message            ApiException(500, msg)
+                                                         shown as SnackBar
+  ─────────────────────────────────────────────────────────────────────────────
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 7 — TESTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+7.1  LARAVEL MANUAL API TESTS (with curl — Windows PowerShell)
+───────────────────────────────────────────────────────────────
+Run with Laravel server active (php artisan serve):
+
+  # List all tasks (expect 200 + [])
+  curl -s -H "Accept: application/json" http://127.0.0.1:8000/api/tasks
+
+  # Create a task (expect 201 + task object)
+  curl -s -X POST http://127.0.0.1:8000/api/tasks `
+    -H "Content-Type: application/json" `
+    -H "Accept: application/json" `
+    -d '{"title":"Buy groceries","description":"Milk, eggs","due_date":"2026-11-01"}'
+
+  # Get single task (expect 200 + task, id=1)
+  curl -s -H "Accept: application/json" http://127.0.0.1:8000/api/tasks/1
+
+  # Update task status (expect 200 + updated task)
+  curl -s -X PATCH http://127.0.0.1:8000/api/tasks/1 `
+    -H "Content-Type: application/json" `
+    -H "Accept: application/json" `
+    -d '{"status":"completed"}'
+
+  # Validation failure test (expect 422)
+  curl -s -X POST http://127.0.0.1:8000/api/tasks `
+    -H "Content-Type: application/json" `
+    -H "Accept: application/json" `
+    -d '{"title":""}'
+
+  # Delete task (expect 200 + message)
+  curl -s -X DELETE -H "Accept: application/json" http://127.0.0.1:8000/api/tasks/1
+
+  # Not found test (expect 404)
+  curl -s -H "Accept: application/json" http://127.0.0.1:8000/api/tasks/999
+
+7.2  LARAVEL AUTOMATED FEATURE TEST (OPTIONAL BONUS)
+───────────────────────────────────────────────────────
+File: tests/Feature/TaskApiTest.php
+
+  Configure tests/TestCase.php to use RefreshDatabase.
+  In phpunit.xml, set:
+    <env name="DB_CONNECTION" value="sqlite"/>
+    <env name="DB_DATABASE" value=":memory:"/>
+
+  This runs tests against an in-memory SQLite DB so the production database
+  is never touched during testing.
+
+  php artisan test              # run all tests
+  php artisan test --filter TaskApiTest
+
+7.3  FLUTTER WIDGET TESTS (OPTIONAL)
+──────────────────────────────────────
+  flutter test                 # runs tests in test/ directory
+  flutter test --coverage      # with coverage
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 8 — COMMON INTEGRATION BUGS & HOW TO AVOID THEM
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  BUG                              CAUSE & FIX
+  ─────────────────────────────────────────────────────────────────────────────
+  Flutter gets HTML instead of     Missing "Accept: application/json" header.
+  JSON on errors (404, 500)        Add it to every request header map.
+  ─────────────────────────────────────────────────────────────────────────────
+  Android emulator: Connection     Use 10.0.2.2 not 127.0.0.1 as API host.
+  refused                          Add INTERNET permission + cleartext traffic.
+  ─────────────────────────────────────────────────────────────────────────────
+  Laravel 11/12: /api/tasks        routes/api.php not loaded. Run:
+  returns 404 always               php artisan install:api
+  ─────────────────────────────────────────────────────────────────────────────
+  due_date shows as null even      Snake_case mismatch. JSON key is "due_date"
+  when set                         not "dueDate". Check Task.fromJson().
+  ─────────────────────────────────────────────────────────────────────────────
+  CORS error in Chrome             config/cors.php: set 'allowed_origins'=>['*']
+  (No 'Access-Control-Allow-       and 'paths'=>['api/*'].
+  Origin' header)                  Restart server after changing config.
+  ─────────────────────────────────────────────────────────────────────────────
+  status resets to 'pending'       Only send fields you intend to update.
+  after edit                       On edit, include current status in payload.
+  ─────────────────────────────────────────────────────────────────────────────
+  task list doesn't refresh        Must call setState + reload after create/
+  after mutation                   update/delete. Check Navigator.pop result.
+  ─────────────────────────────────────────────────────────────────────────────
+  php artisan migrate fails        XAMPP MySQL not running. Start MySQL in
+  with "Connection refused"        XAMPP Control Panel first.
+  ─────────────────────────────────────────────────────────────────────────────
+  Mass assignment exception        Task model: verify $fillable includes all
+  on Task::create()                writable fields. Do not use $guarded = [*].
+  ─────────────────────────────────────────────────────────────────────────────
+  Flutter http package throws      Wrap all http calls with .timeout() and
+  with no user-visible error       catch TimeoutException + generic Exception.
+  ─────────────────────────────────────────────────────────────────────────────
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 9 — COMPLETE SETUP CHECKLIST (for submission / interviewer handoff)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  LARAVEL SETUP
+  ─────────────
+  [ ] 1. Start XAMPP → Apache + MySQL
+  [ ] 2. Create database:
+         C:\xampp\mysql\bin\mysql.exe -u root -e "CREATE DATABASE task_manager CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+  [ ] 3. cd task_manager_api
+  [ ] 4. cp .env.example .env  (if .env missing)
+  [ ] 5. Edit .env: set DB_DATABASE=task_manager, DB_USERNAME=root, DB_PASSWORD=
+  [ ] 6. php artisan key:generate
+  [ ] 7. php artisan install:api --without-migration
+  [ ] 8. php artisan migrate
+  [ ] 9. php artisan route:list --path=api   (verify 5 routes appear)
+  [ ] 10. php artisan serve --host=0.0.0.0 --port=8000
+  [ ] 11. curl -H "Accept: application/json" http://127.0.0.1:8000/api/tasks
+          → expect: []
+
+  FLUTTER SETUP
+  ─────────────
+  [ ] 12. cd task_manager_app
+  [ ] 13. flutter pub get
+  [ ] 14. Edit lib/config/api_config.dart — set correct baseUrl for target device
+  [ ] 15. flutter run -d chrome          (or -d windows / emulator)
+  [ ] 16. Verify task list loads (empty state visible)
+  [ ] 17. Create a task via the form → appears in list
+  [ ] 18. Edit the task → changes saved
+  [ ] 19. Mark complete → status updates, visual change
+  [ ] 20. Delete task → removed from list
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 10 — EVALUATION RUBRIC (unchanged from original)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Area                       Points   What to look for
+  ─────────────────────────────────────────────────────────────────────────────
+  Laravel API & database        30    Migration, Eloquent, CRUD, persistence
+  Validation & responses        10    Validation rules, status codes, JSON shape
+  Flutter API integration       20    HTTP requests, JSON parsing, error handling
+  End-to-end functionality      20    Create / list / edit / complete / delete
+  Code organisation             10    Readable structure, separation of concerns
+  UX & testing                  10    Loading / empty / error states + manual run
+  ─────────────────────────────────────────────────────────────────────────────
+  TOTAL                        100
+
+  Optional Bonus (noted, not scored):
+    • Filter by pending / completed status
+    • Search tasks by title
+    • Laravel PHPUnit feature test
+    • Reusable Flutter form widget
+
+  SUGGESTED TIME ALLOCATION
+  ──────────────────────────
+  Activity                                              Time
+  Laravel migration, model, routes & CRUD API           90 min
+  Validation, response consistency & quick curl tests   30 min
+  Flutter task list, model & API service                45 min
+  Flutter create / edit / complete / delete flows       60 min
+  Loading / error states, integration checks, cleanup   15 min
+  ────────────────────────────────────────────────────  ──────
+  Total                                                240 min (4 hours)
+
+  INTERVIEWER NOTE (preserved verbatim):
+  "Evaluate the end-to-end flow first. If time runs short, prioritise listing,
+  creating, and updating tasks; ask the candidate to explain what remains."
+
+  CANDIDATE INSTRUCTIONS (preserved verbatim):
+  "The Flutter app must communicate with the candidate's own Laravel API.
+  A polished UI is not expected; prioritise working functionality.
+  Documentation and AI tools may be used, but the candidate must explain their
+  code. Submit both project folders and brief setup instructions covering
+  database configuration, migrations, API base URL, and run commands."
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+END OF SPECIFICATION
+================================================================================

@@ -1,0 +1,31 @@
+# Logs and temporary files
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Laravel ignored files
+task_manager_api/vendor/
+task_manager_api/node_modules/
+task_manager_api/public/hot
+task_manager_api/public/storage
+task_manager_api/storage/*.key
+task_manager_api/storage/framework/cache/*
+task_manager_api/storage/framework/sessions/*
+task_manager_api/storage/framework/views/*
+task_manager_api/storage/logs/*
+task_manager_api/.env.backup
+task_manager_api/.phpunit.result.cache
+
+# Flutter ignored files
+task_manager_app/.dart_tool/
+task_manager_app/.flutter-plugins
+task_manager_app/.flutter-plugins-dependencies
+task_manager_app/.packages
+task_manager_app/build/
+task_manager_app/ios/Pods/
+task_manager_app/ios/.symlinks/
+task_manager_app/windows/flutter/ephemeral/
+task_manager_app/linux/flutter/ephemeral/
+task_manager_app/.pub-cache/
+task_manager_app/.pub/
